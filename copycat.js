@@ -1,4 +1,3 @@
-//import "smtp";
 // const FuzzySet = require('fuzzyset')
 // to circumvent calling 'document.getElementById('id');' a million times
 function ID(elementId) {
@@ -44,13 +43,15 @@ explanations[3] = "The answer is <b>Time:</b><hr>"
 
 // save the users answers
 let answers = new Array(4).fill(null);
-// set timer in seconds
-let timeLeft = 300;
-let countdownTimer;
+// set timer in seconds (required for the contdown timer)
+// let timeLeft = 300;
+// let countdownTimer;
+
 // save user information
 // let email = "None";
-let prolificId = "None"
-
+let prolificId = "None";
+let userTime;
+let userScore;
 
 // use FuzzySet to account for missspelling of the words
 // let solutions_fuzzy = new Array(5);
@@ -62,11 +63,15 @@ let prolificId = "None"
 
 // Hides the initial view on button click and displays the puzzle view.
 function startPuzzle() {
+	if (ID("prolificID").value != "") {
+		prolificId = ID("prolificID").value;
+	}
 	initial.style.display = 'none';
     puzzle.style.display = 'block';
     updatePuzzle(currentPuzzle);
-	updateTimer();
-    countdownTimer = setInterval(updateTimer, 1000);
+	// updateTimer();
+    // countdownTimer = setInterval(updateTimer, 1000);
+	userTime = new Date().getTime();
 }
 
 // changes the view based on the puzzle number.
@@ -127,17 +132,17 @@ function goNext() {
 }
 
 // Checks if there is a previous puzzle and calls updatePuzzlethen calls saveSolution and updatePuzzle
-function goBack() {
-    if (currentPuzzle > 1) {
-		saveSolution()
-        currentPuzzle--;
-        updatePuzzle(currentPuzzle);
-		ID("answer").value = answers[currentPuzzle - 1]
+// function goBack() {
+//     if (currentPuzzle > 1) {
+// 		saveSolution()
+//         currentPuzzle--;
+//         updatePuzzle(currentPuzzle);
+// 		ID("answer").value = answers[currentPuzzle - 1]
 		
-        //update header
-        // ID("puzzle-number").innerText  = 'Puzzle ' +  currentPuzzle + '/5';
-    }
-}
+//         //update header
+//         // ID("puzzle-number").innerText  = 'Puzzle ' +  currentPuzzle + '/5';
+//     }
+// }
 
 // Submit user answer, reveal solution, hide 'submit' button and reveal 'next' button
 function submitAnswer() {
@@ -148,8 +153,12 @@ function submitAnswer() {
 	ID("next-btn").style.display = "inline-block"
 	ID("user-input").style.display = "none"
 	if (currentPuzzle == 4) {
+		let endTime = new Date().getTime();
+		let timeSpent = endTime - userTime;
+		// miliseconds to seconds
+		userTime = timeSpent / 1000;
 		ID("finish-btn").style.display = 'inline-block';
-		ID("next-btn").style.display = "none"
+		ID("next-btn").style.display = "none";
 	}
 }
 
@@ -208,85 +217,105 @@ function prepare_answer(answer) {
 	return prep_array
 }
 
-
-
-function finalPageSetup() {
-	saveSolution();
-	puzzle.style.display = 'none';
-	result.style.display = 'block';
-	evaluateScore();
-	// call emailPromt after 3000 miliseconds
-	setTimeout(() => {
-		console.log("Delayed for 6 second.");
-		emailPromt()
-	}, 6000);
-}
+// function finalPageSetup() {
+// 	saveSolution();
+// 	puzzle.style.display = 'none';
+// 	result.style.display = 'block';
+// 	evaluateScore();
+// 	// call emailPromt after 3000 miliseconds
+// 	setTimeout(() => {
+// 		console.log("Delayed for 6 second.");
+// 		emailPromt()
+// 	}, 6000);
+// }
 
 function emailPromt() {
 	// result.style.display = 'none';
 	// emailPrompt.style.display = 'block'
 	//prompt("Enter your email to receive further Quizzes.", "example@email.com");
-	let userScore = evaluateScore();
+	userScore = evaluateScore();
 	scoreReaction(userScore);
 	const modal = ID('email-prompt');
 	modal.showModal();
-	ID("close-modal").addEventListener("click", () => {
-		modal.close();
-		smtpCode("None");
-	});
+}
+
+function refuseEmail() {
+	window.location.href = 'https://forms.gle/zn7w5S56PpZigtqo8';
+	submitToFormspree("None-Refused");
 }
 
 // sets up the second part of the email promt modal
 function modalEmailInput() {
-	ID("modal-phase2").style.display = "block"
- 	ID("modal-phase1").style.display = "none"
+	ID("modal-phase2").style.display = "block";
+ 	ID("modal-phase1").style.display = "none";
 }
 
 function submitEmail() {
-	console.log("Test");
 	let email = ID("email").value;
 	if (email == "") {
-		email = "None-Canceled";
+		email = "Empty-Submission";
+	} else {
+		email = "Submitted";
 	}
 	window.location.href = 'https://forms.gle/zn7w5S56PpZigtqo8';
-	smtpCode(email);
-	
+	submitToFormspree(email);
 }
 
-// Takes a string with the users email and sends an email with these fields to Host
-function smtpCode(email) {
-	smpt.Email.send({
-		Host : "smtp.gmail.com",
-		Username : "translucent.traveler@gmail.com",
-		Password : "XXX",
-		To : 'laurent.schmidt.001@student.uni.lu',
-		From : "confirmshame@BSP.com",
-		Subject : "Confirmshame Prompt submission",
-		Body : "Time spend," + (300 - timeLeft) + "\n"
-			+ "Email," + email + "\n"
-			+ "prolific id," + prolificId + "\n"
-	}).then(
-  		console.log("The email was sent")
-	);
+function cancelEmail() {
+	window.location.href = 'https://forms.gle/zn7w5S56PpZigtqo8';
+	submitToFormspree("None-Canceled");
 }
 
-function updateTimer() {
-	// Calculate the minutes and seconds remaining
-	const minutes = Math.floor(timeLeft / 60);
-	const seconds = timeLeft % 60;
 
-	// Format the minutes and seconds with leading zeros
-	const formattedMinutes = minutes.toString().padStart(2, '0');
-	const formattedSeconds = seconds.toString().padStart(2, '0');
+// Takes a string with the users email and submits it to Formspree.io 
+function submitToFormspree(email) {
+	// Define the form data as an object
+	let formData = {
+		prolific_Id: prolificId,
+		email_address: email,
+		correct_answers_nbr: userScore,
+		time_spend: userTime
+	};
 
-	// Update the timer text
-	ID("timer").textContent = `${formattedMinutes}:${formattedSeconds}`;
-
-	// Check if the countdown has ended
-	if (timeLeft === 0) {
-		clearInterval(countdownTimer);
-		finalPageSetup();
-	} else {
-		timeLeft--;
-	}
+	// Make an HTTP POST request to the Formspree endpoint
+	fetch("https://formspree.io/xknayqpb", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json"
+		},
+		body: JSON.stringify(formData)
+	})
+	.then(response => {
+		if (response.ok) {
+			console.log("Form submitted successfully!");
+		} else {
+			console.error("Form submission failed:", response.status);
+		}
+	})
+	.catch(error => {
+		console.error("Form submission failed:", error);
+	});
 }
+
+
+// Updates the timer html element with a countdown.
+// function updateTimer() {
+// 	// Calculate the minutes and seconds remaining
+// 	const minutes = Math.floor(timeLeft / 60);
+// 	const seconds = timeLeft % 60;
+
+// 	// Format the minutes and seconds with leading zeros
+// 	const formattedMinutes = minutes.toString().padStart(2, '0');
+// 	const formattedSeconds = seconds.toString().padStart(2, '0');
+
+// 	// Update the timer text
+// 	ID("timer").textContent = `${formattedMinutes}:${formattedSeconds}`;
+
+// 	// Check if the countdown has ended
+// 	if (timeLeft === 0) {
+// 		clearInterval(countdownTimer);
+// 		finalPageSetup();
+// 	} else {
+// 		timeLeft--;
+// 	}
+// }
