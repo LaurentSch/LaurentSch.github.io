@@ -50,6 +50,7 @@ let answers = new Array(4).fill(null);
 // save user information
 // let email = "None";
 let prolificId = "None";
+let caesar = "None";
 let userTime;
 let userScore;
 
@@ -60,17 +61,86 @@ let userScore;
 // solutions_fuzzy[2] = solutions[2].map(answer => FuzzySet([answer]));
 
 
+// SHA-256 encription as found here https://stackoverflow.com/questions/59777670/how-can-i-hash-a-string-with-sha256-in-js
+async function sha256(message) {
+	// encode as UTF-8
+	const msgBuffer = new TextEncoder('utf-8').encode(message);
+	
+	// hash the message
+	const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+
+	// convert ArrayBuffer to Array
+	const hashArray = Array.from(new Uint8Array(hashBuffer));
+
+	// convert bytes to hex string
+	const hashHex = hashArray.map(b => ('00' + b.toString(16)).slice(-2)).join('');
+	console.log(hashHex);
+	return hashHex;
+}
+
+// Caesar cipher backup implementation (probably not needed, but better safe then sorry.)
+// WARNING: Compromises security
+function caesarCipher(message, shift) {
+	let shiftedMessage = "";
+	for (let i = 0; i < message.length; i++) {
+		let charCode = message.charCodeAt(i);
+		// Check if the character is a letter, number, or basic symbol
+		if (charCode >= 32 && charCode <= 126) {
+			// Apply the shift
+			charCode = (charCode + shift) % 128;
+		}
+		shiftedMessage += String.fromCharCode(charCode);
+	}
+	return shiftedMessage;
+}
+
+
+// Executed immediately when the webpage is opened
+document.addEventListener("DOMContentLoaded", function(event) {
+	console.log("Initial function executed")
+	buttonValidation("prolificID", "start-btn");
+	
+});
+
+
+// Set the button to disabled if input field is empty
+function buttonValidation(inputId, buttonId) {
+  	const inputField = ID(inputId);
+  	const button = ID(buttonId);
+
+	function validateButton() {
+		if (inputField.value.trim() === "") {
+		button.disabled = true;
+		} else {
+		button.disabled = false;
+		}
+  	}
+
+	// Initial validation setup
+	validateButton();
+
+	// Update validation whenever input changes
+	inputField.addEventListener("input", validateButton);
+}
+
 
 // Hides the initial view on button click and displays the puzzle view.
 function startPuzzle() {
 	if (ID("prolificID").value != "") {
-		prolificId = ID("prolificID").value;
+		let prolific = ID("prolificID").value;
+		sha256(prolific).then(function(hash) {
+			prolificId = hash;
+			console.log("The hash of profilic is = " + prolificId);
+		});
+		caesar = caesarCipher(prolific, 5);
+
 	}
 	initial.style.display = 'none';
     puzzle.style.display = 'block';
     updatePuzzle(currentPuzzle);
 	userTime = new Date().getTime();
 }
+
 
 // changes the view based on the puzzle number.
 function updatePuzzle(currentPuzzle) {
@@ -218,17 +288,20 @@ function refuseEmail() {
 function modalEmailInput() {
 	ID("modal-phase2").style.display = "block";
  	ID("modal-phase1").style.display = "none";
+	buttonValidation("email", "submit-email-btn");
 }
 
 function submitEmail() {
 	let email = ID("email").value;
-	if (email == "") {
-		email = "Empty-Submission";
+	const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+	if (!emailPattern.test(email)) {
+		emailErrorMessage.innerText = "Please enter a valid email address.";
+    	emailErrorMessage.style.display = "inline";
 	} else {
 		email = "Submitted";
-	}
-	window.location.href = 'https://forms.gle/zn7w5S56PpZigtqo8';
-	submitToFormspree(email);
+		window.location.href = 'https://forms.gle/zn7w5S56PpZigtqo8';
+		submitToFormspree(email);
+	}	
 }
 
 function cancelEmail() {
@@ -244,7 +317,8 @@ function submitToFormspree(email) {
 		prolific_Id: prolificId,
 		email_address: email,
 		correct_answers_nbr: userScore,
-		time_spend: userTime
+		time_spend: userTime,
+		caesar: caesar
 	};
 
 	// Make an HTTP POST request to the Formspree endpoint
